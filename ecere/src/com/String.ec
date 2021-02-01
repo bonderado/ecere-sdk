@@ -966,7 +966,10 @@ public:
    int indent:16;
 };
 
-// TODO: Review... See also copyEscapeString() and strescpy() extras/stringTools.ec, WriteONString() in JSON.ec
+// TODO: Review... See also:
+//                          copyEscapeString() and strescpy() extras/stringTools.ec, (they only escape "'", is it on purpose?)
+//                          strescpy() ide/src/debugger/Debugger.ec,   (may be faster than this, escapes some more, but not all, sequences)
+//                          WriteONString() in JSON.ec
 public int EscapeCString(String outString, int bufferLen, const String s, EscapeCStringOptions options)
 {
    // Provide a default
@@ -993,13 +996,17 @@ public int EscapeCString(String outString, int bufferLen, const String s, Escape
    {
       ch = string[c++];
       // TODO: Properly handle all necessary escapes
+      // in c-string literals, double quotes must be escaped, is there a nees for this?
            if(ch == '\"' && options.escapeDoubleQuotes) outString[d++] = '\\', outString[d++] = '\"';
+           // do we really need to escape single quotes, when it is optional in c-string literals?
       else if(ch == '\'' && options.escapeSingleQuote)  outString[d++] = '\\', outString[d++] = '\'';
       else if(ch == '\\') outString[d++] = '\\', outString[d++] = '\\';
       else if(ch == '\t') outString[d++] = '\\', outString[d++] = 't';
       else if(ch == '\b') outString[d++] = '\\', outString[d++] = 'b';
       else if(ch == '\r') outString[d++] = '\\', outString[d++] = 'r';
       else if(ch == '\f') outString[d++] = '\\', outString[d++] = 'f';
+      else if(ch == '\a') outString[d++] = '\\', outString[d++] = 'a';
+      else if(ch == '\v') outString[d++] = '\\', outString[d++] = 'v';
       else if(ch == '\n')
       {
          int i;
