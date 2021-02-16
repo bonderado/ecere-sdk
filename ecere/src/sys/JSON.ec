@@ -1848,12 +1848,15 @@ static bool WriteMap(File f, Class type, Map map, int indent, bool eCON, Map<Str
       {
          Class mapKeyClass = mapNodeClass.templateArgs[0].dataTypeClass;
          Class mapDataClass = mapNodeClass.templateArgs[2].dataTypeClass;
-         if(!eCON && // TOCHECK: When would we *not* want this JSON dictionary behavior for a Map?
-            (!strcmp(mapKeyClass.name, "UMSFormatType") ||
-             strstr(mapDataClass.name, "UMSFieldValue") ||
-             (!strcmp(mapKeyClass.name, "String") && !strcmp(mapDataClass.name, "String") ) ||
-             strstr(mapDataClass.name, "MapboxGLSourceData")))
-            jsonDicMap = true;
+         // TOCHECK: When would we *not* want this JSON dictionary behavior for a Map?
+         jsonDicMap  = (!eCON && (
+                  !strcmp(mapKeyClass.name, "UMSFormatType") ||
+                  strstr(mapDataClass.name, "UMSFieldValue") ||
+                  (!strcmp(mapKeyClass.name, "String") && !strcmp(mapDataClass.name, "String")) ||
+                  strstr(mapDataClass.name, "MapboxGLSourceData") ||
+                  strstr(mapDataClass.name, "ProcessingInput")
+                  )
+               );
       }
 
       if(jsonDicMap)
@@ -2281,12 +2284,15 @@ static bool WriteONObject(File f, Class objectType, void * object, int indent, b
          {
             mapKeyClass = objectType.templateArgs[0].dataTypeClass;
             mapDataClass = objectType.templateArgs[2].dataTypeClass;
-            if(!eCON &&
-               (!strcmp(mapKeyClass.name, "UMSFormatType") ||
-               strstr(mapDataClass.name, "UMSFieldValue") ||
-               (!strcmp(mapKeyClass.name, "String") && !strcmp(mapDataClass.name, "String")) ||
-               strstr(mapDataClass.name, "MapboxGLSourceData")))
-               jsonDicMap = true;
+            // TOCHECK: When would we *not* want this JSON dictionary behavior for a Map?
+            jsonDicMap  = (!eCON && (
+                     !strcmp(mapKeyClass.name, "UMSFormatType") ||
+                     strstr(mapDataClass.name, "UMSFieldValue") ||
+                     (!strcmp(mapKeyClass.name, "String") && !strcmp(mapDataClass.name, "String")) ||
+                     strstr(mapDataClass.name, "MapboxGLSourceData") ||
+                     strstr(mapDataClass.name, "ProcessingInput")
+                     )
+                  );
          }
 
          if(_class && _class.bindingsClass) _class = _class.base;
