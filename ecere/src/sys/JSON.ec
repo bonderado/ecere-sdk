@@ -78,6 +78,27 @@ FreeingAVLTree<const String> compactArrays
    "EX_Extent"
 ] };
 
+FreeingAVLTree<const String> defaultForceCustomValueClasses
+{[
+   // List of class names that should always be treated as customValues
+   "FieldValue",
+   "ProcessInputValue"
+]};
+
+FreeingAVLTree<const String> defaultSpecialValuedClasses
+{[
+   // List of class names that should be treated as specialValues
+   "FieldValue",
+   "FlexyField",
+   "GeoJSONValue",
+   "MBGLFilterValue",
+   "ProcessInputValue",
+   "OGCAPISpatialExtent",
+   "OGCAPIMultiBoundingBox",
+   "OGCAPITemporalExtent",
+   "OGCAPIMultiInterval"
+]};
+
 public enum JSONResult { syntaxError, success, typeMismatch, noItem };
 public enum JSONFirstLetterCapitalization { keepCase, upperCase, lowerCase };
 
@@ -111,6 +132,15 @@ public class JSONParser
 {
 public:
    File f;
+   // A parser instance can register additional special and custom-forced
+   // classes by setting the members below and filling them with the class
+   // names tht will be checked in addition to the global ones.
+   // Note that forceCustomValueClasses are only checked in case of structClass
+   // and the names should be repeated in specialValuedClasses for them to take
+   // full effect. Also note that the parser will take ownership of the lists
+   // and will dispose of them automatically.
+   AVLTree<const String> forceCustomValueClasses;
+   AVLTree<const String> specialValuedClasses;
 private:
    char ch;
    bool eCON;
@@ -124,6 +154,34 @@ private:
 
    public property bool debug { set { debug = value; } get { return debug; } }
    public property bool warnings { set { warnings = value; } get { return warnings; } }
+
+   ~JSONParser()
+   {
+      if(forceCustomValueClasses)
+      {
+         forceCustomValueClasses.Free();
+         delete forceCustomValueClasses;
+      }
+      if(specialValuedClasses)
+      {
+         specialValuedClasses.Free();
+         delete specialValuedClasses;
+      }
+   }
+
+   bool checkCustom(Class type)
+   {
+      return (bool)( defaultForceCustomValueClasses.Find(type.name) ||
+            (forceCustomValueClasses && forceCustomValueClasses.Find(type.name))
+            );
+   }
+
+   bool checkSpecial(Class type)
+   {
+      return (bool)( defaultSpecialValuedClasses.Find(type.name) ||
+            (specialValuedClasses && specialValuedClasses.Find(type.name))
+            );
+   }
 
    bool ReadChar(char * ch)
    {
@@ -227,24 +285,13 @@ private:
       {
          if(type.type == structClass)
          {
-            customValuefication = ch != '{' || strstr(type.name, "FlexyField") || strstr(type.name, "ProcessInputValue");
-            specialValuefication = customValuefication && (
-                  strstr(type.name, "FieldValue") ||
-                  strstr(type.name, "FlexyField") ||
-                  strstr(type.name, "GeoJSONValue") ||
-                  strstr(type.name, "MBGLFilterValue") ||
-                  strstr(type.name, "ProcessInputValue") );
+            customValuefication = ch != '{' || checkCustom(type);
+            specialValuefication = customValuefication &&  checkSpecial(type);
          }
          else if(type.type == normalClass && ch !='{')
          {
-            if(strstr(type.name, "OGCAPISpatialExtent") ||
-               strstr(type.name, "OGCAPIMultiBoundingBox") ||
-               strstr(type.name, "OGCAPITemporalExtent") ||
-               strstr(type.name, "OGCAPIMultiInterval"))
-            {
-               customValuefication = true;
-               specialValuefication = true;
-            }
+               customValuefication = checkSpecial(type);
+               specialValuefication = customValuefication;
          }
       }
 
