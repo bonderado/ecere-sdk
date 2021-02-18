@@ -300,75 +300,7 @@ private:
          String string;
          if(ch != '\"' || specialValuefication)
          {
-            bool escaped = false, quoted = ch == '\"', done = false;
-            int size = 32, len = 0;
-            char * s = new char[size];
-            uint64 openSquar = 0; // track up to 63
-            uint64 openCurly = 0; // nesting levels
-            int level = 0;
-            while(ch && !done)
-            {
-               if(len + 1 >= size)
-               {
-                  size += size >> 1;
-                  s = renew s char[size];
-               }
-               if(ch != '\n' && ch != 32)
-               {
-                  if(!quoted)
-                  {
-                     if(level <= 0 && (ch == ',' || ch == '}' || ch == ']'))  // Completed correctly
-                        break;
-                     else if(ch == '{')
-                     {
-                        level++;
-                        openCurly = (openCurly << 1) | 1;
-                        openSquar = openSquar << 1;
-                     }
-                     else if(ch == '[')
-                     {
-                        level++;
-                        openCurly = openCurly << 1;
-                        openSquar = (openSquar << 1) | 1;
-                     }
-                     else if(ch == '}')
-                     {
-                        level--;  // let level free to become negative
-                        if (openSquar & 1 )
-                           break;  // openSquar will certainly be > 0
-                        openCurly >>= 1;
-                        openSquar >>= 1;
-                     }
-                     else if(ch == ']')
-                     {
-                        level--;  // let level free to become negative
-                        if (openCurly & 1)
-                           break;  // openCurly will certainly be > 0
-                        openCurly >>= 1;
-                        openSquar >>= 1;
-                     }
-                  }
-                  else if(quoted)
-                  {
-                     if(escaped)
-                        escaped = false;
-                     else if(ch == '\\')
-                        escaped = true;
-                     else if(ch == '\"' && len > 0)
-                        done = true;
-                  }
-               }
-
-               s[len++] = ch;
-               if(!ReadChar(&ch))
-                  break;  // Get next ch and stop on failure to do so
-            }
-            s[len] = 0;
-            while(len > 0 && isspace(s[len-1]))
-               s[--len] = 0;
-            s = renew s char[len + 1];
-            string = s;  //     | open braces match closed one   | no extra closing
-            result = (len > 0 && openSquar == 0 && openCurly == 0 && level > -1) ? success : syntaxError;
+            result = GetSpecialValueString(&string);
          }
          else
          {
@@ -1040,6 +972,88 @@ private:
       if(ch != ']' && ch != ',' && ch != '}' && ch != ';' && ch != '/' && ch != '=' && ch != ':')
          ch = 0;
       return result;
+   }
+
+   JSONResult GetSpecialValueString(String * string)
+   {
+      // Get verbatim all text enclosed in double quotes ("text") square
+      // brackets ([text]) or curly braces ({text}), including the delimiters.
+      // In the case of brackets and braces it also enforces proper nesting of
+      // the two types of delimiters.
+
+      bool done = false, escaped = false, quoted = ch == '\"';
+      int size = 32, len = 0;
+      char * s = new char[size];
+
+      int nestLevel = 0;
+      uint64 openSquar = 0; // track up to 63
+      uint64 openCurly = 0; // nesting levels
+      char oC = '{',  cC = '}', oS = '[', cS = ']';
+
+      while(ch && !done)
+      {
+         if(len + 1 >= size)
+         {
+            size += size >> 1;
+            s = renew s char[size];
+         }
+         if(ch != '\n' && ch != 32)
+         {
+            if(!quoted)
+            {
+               if(nestLevel <= 0 && (ch == ',' || ch == cC || ch == cS))  // Completed correctly
+                  break;
+               else if(ch == oC)
+               {
+                  nestLevel++;
+                  openCurly = (openCurly << 1) | 1;
+                  openSquar = openSquar << 1;
+               }
+               else if(ch == oS)
+               {
+                  nestLevel++;
+                  openCurly = openCurly << 1;
+                  openSquar = (openSquar << 1) | 1;
+               }
+               else if(ch == cC)
+               {
+                  nestLevel--;  // let nestLevel free to become negative
+                  if (openSquar & 1 )
+                     break;  // openSquar will certainly be > 0
+                  openCurly >>= 1;
+                  openSquar >>= 1;
+               }
+               else if(ch == cS)
+               {
+                  nestLevel--;  // let nestLevel free to become negative
+                  if (openCurly & 1)
+                     break;  // openCurly will certainly be > 0
+                  openCurly >>= 1;
+                  openSquar >>= 1;
+               }
+            }
+            else if(quoted)
+            {
+               if(escaped)
+                  escaped = false;
+               else if(ch == '\\')
+                  escaped = true;
+               else if(ch == '\"' && len > 0)
+                  done = true;
+            }
+         }
+
+         s[len++] = ch;
+         if(!ReadChar(&ch))
+            break;  // Get next ch and stop on failure to do so
+      }
+      s[len] = 0;
+      while(len > 0 && isspace(s[len-1]))
+         s[--len] = 0;
+      s = renew s char[len + 1];
+      *string = s;  //     | open braces match closed one   | no extra closing
+
+      return (len > 0 && openSquar == 0 && openCurly == 0 && nestLevel > -1) ? success : syntaxError;
    }
 
    JSONResult GetString(String * string)
