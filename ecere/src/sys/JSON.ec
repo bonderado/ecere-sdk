@@ -310,57 +310,9 @@ private:
          }
          if(result)
          {
-            Property prop;
-            if(type && (!strcmp(type.name, "String") || !strcmp(type.dataTypeString, "char *")))
-            {
-               value.p = string;
-            }
-            else if(type && (type.type == enumClass || type.type == unitClass))
-            {
-               if(onGetDataFromString(type, &value.i, string))
-                  result = success;
-               else
-                  result = typeMismatch;
-               delete string;
-            }
-            else if(type && (prop = eClass_FindProperty(type, "String", type.module)))
-            {
-               // TOFIX: Add more conversion property support... Expecting void * compatible here
-               value.p = ((void *(*)())(void *)prop.Set)(string);
-               result = success;
-               delete string;
-            }
-            else if(type && (eClass_IsDerived(type, class(ColorAlpha)) || eClass_IsDerived(type, class(Color))))
-            {
-               result = GetColorAlpha(string, value);
-               delete string;
-            }
-            else if(type && (type.type == structClass))
-            {
-               if(onGetDataFromString(type, value.p, string))
-                  result = success;
-               else
-                  result = typeMismatch;
-               delete string;
-            }
-            else if(type && (type.type == normalClass))
-            {
-               if(onGetDataFromString(type, &value.p, string))
-                  result = success;
-               else
-               {
-                  if(type)
-                     ((void (*)(void *, void *))(void *)type._vTbl[__ecereVMethodID_class_OnFree])(type, value.p);
-                  result = typeMismatch;
-               }
-               delete string;
-            }
-            else
-            {
-               delete string;
-               result = typeMismatch;
-            }
+            result = ConvertStringToValue(type, string, value);
          }
+         delete string;
       }
       else if(ch == '[')
       {
@@ -971,6 +923,54 @@ private:
       delete buffer;
       if(ch != ']' && ch != ',' && ch != '}' && ch != ';' && ch != '/' && ch != '=' && ch != ':')
          ch = 0;
+      return result;
+   }
+
+   JSONResult ConvertStringToValue(Class type, const String string, DataValue value)
+   {
+      // Assign the proper value obtained from the special String to the
+      // DataValue object scording to type.
+      // The string should be disposed of appropriately in the caller.
+
+      Property prop;
+      JSONResult result;
+      bool (* onGetDataFromString)(void *, void *, const char *) = type ? (void *)type._vTbl[__ecereVMethodID_class_OnGetDataFromString] : null;
+
+      if(!type) // Fail if no type is given and guarantee type != null afterwards.
+         result = typeMismatch;
+      else if((!strcmp(type.name, "String") ||
+               !strcmp(type.dataTypeString, "char *")))
+      {
+         value.p = CopyString(string);
+         result = success;
+      }
+      else if((type.type == enumClass || type.type == unitClass) && onGetDataFromString &&
+            onGetDataFromString(type, &value.i, string))
+         result = success;
+      else if((prop = eClass_FindProperty(type, "String", type.module)))
+      {
+         // TOFIX: Add more conversion property support... Expecting void * compatible here
+         value.p = ((void *(*)())(void *)prop.Set)(string);
+         result = success;
+      }
+      else if((eClass_IsDerived(type, class(ColorAlpha)) ||
+               eClass_IsDerived(type, class(Color))))
+         result = GetColorAlpha(string, value);
+      else if((type.type == structClass) && onGetDataFromString &&
+            onGetDataFromString(type, value.p, string))
+         result = success;
+      else if((type.type == normalClass) && onGetDataFromString &&
+            onGetDataFromString(type, &value.p, string))
+         result = success;
+      else
+      {
+         result = typeMismatch;
+         //  The catch-all takes care of objects created
+         //  in the normalClass check if any:
+         // the case of type == null is treated in the first if
+         if(type.type == normalClass)
+            ((void (*)(void *, void *))(void *)type._vTbl[__ecereVMethodID_class_OnFree])(type, value.p);
+      }
       return result;
    }
 
@@ -1854,7 +1854,7 @@ private:
       return result;
    }
 
-   JSONResult GetColorAlpha(String string, DataValue value)
+   JSONResult GetColorAlpha(const String string, DataValue value)
    {
       ColorAlpha color = 0;
       DefinedColor c = 0;
@@ -1870,7 +1870,7 @@ private:
          }
          else
          {
-            char *d;
+            const char *d;
             byte a = 255;
             if((d = strchr(string, ',')))
             {
