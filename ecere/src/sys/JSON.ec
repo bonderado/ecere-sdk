@@ -29,6 +29,140 @@ private:
    }
 }
 
+class OptionsMap : Map<String, JSONTypeOptions>
+{
+   ~OptionsMap()
+   {
+      Free();
+   }
+}
+
+class JSONTypeOptions : uint
+{
+   /*
+    * bit class to hold flags tht apply to a specific class when
+    * (de)serialized (from)to JSON
+    */
+
+   // Options to force use of OnGetDataFromString for a specific JSON type
+
+public:
+   // Numeric values: (hexa)decimal int, double (allows exponent notation).
+   bool numbersUseOGDFS:1;
+   // JSON booleans: unquoted true or false.
+   bool boolUseOGDFS:1;
+   // JSON null value: unquoted null.
+   bool nullUseOGDFS:1;
+   // Values enclosed in '"double quotes"'
+   bool stringUseOGDFS:1;
+   // Values enclosed in '[brackets]'
+   bool arrayUseOGDFS:1;
+   // Values enclosed in '{braces}'
+   bool objectUseOGDFS:1;
+   // Set this to remove surrounding quotes before calling OGDFS: kept by default;
+   bool stripQuotesForOGDFS:1;
+   // If the current JSON type is not among those that should ude OGDFS, fail immediatelyu.
+   bool strictOGDFS:1;
+   // Options to control the writing of an object to JSON/eCON.
+   //   bool boolUseOGDFS:1;
+   //   bool nullUseOGDFS:1;
+}
+
+OptionsMap defaultJsonOptions{[
+   {
+      "FieldValue", {
+         // Without the type part, the value is read and set, but
+         // the type remains 0 and teh bject is unusable.
+         // sonething like { "d" : 1.2, "type" : {"type" : 2}} would be
+         // interpreted corectly, but do we want to expose so
+         // much implementataion in JSON files? FieldValue is
+         // not meant to read arrays, maps or anything else anways.
+         numbersUseOGDFS = true,
+         boolUseOGDFS = true,
+         nullUseOGDFS = true,
+         stringUseOGDFS = true,
+         strictOGDFS = true
+      }
+   },
+   {
+      "FlexyField" , {
+         numbersUseOGDFS = true,
+         boolUseOGDFS = true,
+         nullUseOGDFS = true,
+         stringUseOGDFS = true,
+         arrayUseOGDFS = true,
+         objectUseOGDFS = true
+      }
+   },
+   { // from here on the classes are from gnosis3
+      "ProcessInputValue", {
+         // Derives from FieldValue, adds [] and {} suport.
+         numbersUseOGDFS = true,
+         boolUseOGDFS = true,
+         nullUseOGDFS = true,
+         stringUseOGDFS = true,
+         arrayUseOGDFS = true,
+         objectUseOGDFS = true
+      }
+   },
+   {
+      "GeoJSONValue", {
+         // Derives from FieldValue, adds [] suport.
+         numbersUseOGDFS = true,
+         boolUseOGDFS = true,
+         nullUseOGDFS = true,
+         stringUseOGDFS = true,
+         arrayUseOGDFS = true
+      }
+   },
+   {
+      "MBGLFilterValue", {
+         // Derives from FieldValue : adds [] support.
+         numbersUseOGDFS = true,
+         boolUseOGDFS = true,
+         nullUseOGDFS = true,
+         stringUseOGDFS = true,
+         arrayUseOGDFS = true
+      }
+   },
+   {
+      "OGCAPIMultiBoundingBox", {
+         // Seems to only work with [] and null.
+         strictOGDFS = true,
+         nullUseOGDFS = true,
+         arrayUseOGDFS = true
+      }
+   },
+   {
+      "OGCAPIMultiInterval", {
+         // Seems to only work with [] and null.
+         strictOGDFS = true,
+         nullUseOGDFS = true,
+         arrayUseOGDFS = true
+      }
+   },
+   {
+      // Not sure which options to activate:
+      // I could not find Instance::OnGetDataFromString
+      // but it contains aa OGCAPIMultiBoundingBox
+      "OGCAPISpatialExtent", {
+         strictOGDFS = true,
+         nullUseOGDFS = true,
+         arrayUseOGDFS = true
+      }
+   },
+   {
+      // Not sure which options to activate:
+      // I could not find Instance::OnGetDataFromString
+      // but it contains a OGCAPIMultiInterval
+      "OGCAPITemporalExtent", {
+         strictOGDFS = true,
+         nullUseOGDFS = true,
+         arrayUseOGDFS = true
+      }
+   }
+   ]};
+
 FreeingAVLTree<const String> defaultForceCustomValueClasses
 {[
    // List of class names that should always be treated as customValues
@@ -168,6 +302,11 @@ private:
          specialValuedClasses.Free();
          delete specialValuedClasses;
       }
+   }
+
+   static inline JSONTypeOptions getTypeOptions(Class type)
+   {
+      return defaultJsonOptions[type.name];
    }
 
    bool checkCustom(Class type)
