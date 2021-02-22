@@ -29,6 +29,28 @@ private:
    }
 }
 
+FreeingAVLTree<const String> defaultForceCustomValueClasses
+{[
+   // List of class names that should always be treated as customValues
+   "FlexyField",
+   "ProcessInputValue"
+]};
+
+FreeingAVLTree<const String> defaultSpecialValuedClasses
+{[
+   // List of class names that should be treated as specialValues
+   "FieldValue",
+   "FlexyField",
+   "GeoJSONValue",   //    [  and as  FieldValue
+   "MBGLFilterValue", //   [ and as  FieldValue
+   "ProcessInputValue", // [, { and as FieldValue
+   "OGCAPISpatialExtent", // [ or generic Instance
+   "OGCAPIMultiBoundingBox", // [ or null
+   "OGCAPITemporalExtent", // [ or generic Instance
+   "OGCAPIMultiInterval"// [ or null
+]};
+
+
 FreeingAVLTree<const String> compactTypes
 { [
    "GeoPoint",
@@ -77,27 +99,6 @@ FreeingAVLTree<const String> compactArrays
    "MD_Keywords",
    "EX_Extent"
 ] };
-
-FreeingAVLTree<const String> defaultForceCustomValueClasses
-{[
-   // List of class names that should always be treated as customValues
-   "FieldValue",
-   "ProcessInputValue"
-]};
-
-FreeingAVLTree<const String> defaultSpecialValuedClasses
-{[
-   // List of class names that should be treated as specialValues
-   "FieldValue",
-   "FlexyField",
-   "GeoJSONValue",
-   "MBGLFilterValue",
-   "ProcessInputValue",
-   "OGCAPISpatialExtent",
-   "OGCAPIMultiBoundingBox",
-   "OGCAPITemporalExtent",
-   "OGCAPIMultiInterval"
-]};
 
 public enum JSONResult { syntaxError, success, typeMismatch, noItem };
 public enum JSONFirstLetterCapitalization { keepCase, upperCase, lowerCase };
