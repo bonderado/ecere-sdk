@@ -543,12 +543,13 @@ private:
          if(eCON)
          {
             String string;
-            if(GetIdentifier(&string, null))
+            if(GetIdentifier(&string, null) && type)
             {
                result = success;
-               if(eCON && type && (type.type == enumClass || type.type == unitClass || eClass_IsDerived(type, class(ColorAlpha)) || eClass_IsDerived(type, class(Color))))
+               if( (type.type == enumClass || type.type == unitClass || eClass_IsDerived(type, class(ColorAlpha)) || eClass_IsDerived(type, class(Color))))
                {
-                  bool isColorAlpha = type.type != enumClass && type.type != unitClass && eClass_IsDerived(type, class(ColorAlpha));
+                  bool isColorAlpha = type.type != enumClass && type.type != unitClass &&
+                     eClass_IsDerived(type, class(ColorAlpha)); // how to handle classes that derive from a special one in general?
                   if(isColorAlpha)
                      type = class(Color);
                   // should this be set by calling __ecereVMethodID_class_OnGetDataFromString ?
@@ -561,26 +562,26 @@ private:
                   else
                      result = typeMismatch;
                }
-               else if(type && !strcmp(type.name, "bool"))
+               else if(!strcmp(type.name, "bool"))
                {
                   if(!strcmpi(string, "false")) value.i = 0;
                   else if(!strcmpi(string, "true")) value.i = 1;
                   else
                      result = typeMismatch;
                }
-               else if(type && !strcmp(type.name, "SetBool"))
+               else if(!strcmp(type.name, "SetBool"))
                {
                   if(!strcmpi(string, "false")) value.i = SetBool::false;
                   else if(!strcmpi(string, "true")) value.i = SetBool::true;
                   else
                      result = typeMismatch;
                }
-               else if(type && !strcmpi(string, "null"))
+               else if(!strcmpi(string, "null"))
                {
                   if(type.type != structClass)
                      value.p = 0;
                }
-               else if(type && isSubclass(type, string))
+               else if(isSubclass(type, string))
                {
                   void * object = value.p;
                   Class subtype = superFindClass(string, type.module);
@@ -601,7 +602,7 @@ private:
                      }
                   }
                }
-               else if(ch != '=' && type)
+               else if(ch != '=')
                {
                   Property convProp;
                   Class cType = superFindClass(string, type.module);
