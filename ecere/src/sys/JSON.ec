@@ -597,69 +597,74 @@ private:
                   value.p = 0;
             }
             // End of normal JSON cases
-               else if(eCON)
+            else if(eCON)
+            {
+               Class cType = superFindClass(unqStr, type.module);
+               if(cType && eClass_IsDerived(cType, type))
                {
-                  Class cType = superFindClass(unqStr, type.module);
-                  if(cType && eClass_IsDerived(cType, type))
+                  void * object = value.p;
+                  SkipEmpty();
+                  result = _GetObject(cType, &object, null);  // TO REVIEW: Is this a problem with bitClass here, in 32 bit?
+                  if(result)
                   {
-                     void * object = value.p;
-                     SkipEmpty();
-                     result = _GetObject(cType, &object, null);  // TO REVIEW: Is this a problem with bitClass here, in 32 bit?
-                     if(result)
+                     if(cType && cType.type == structClass);
+                     else if(cType && (cType.type == normalClass || cType.type == noHeadClass || cType.type == bitClass))
                      {
-                        if(cType && cType.type == structClass);
-                        else if(cType && (cType.type == normalClass || cType.type == noHeadClass || cType.type == bitClass))
-                        {
-                           value.p = object;
-                        }
-                        else
-                        {
-                           result = typeMismatch;
-                           if(cType)
-                              ((void (*)(void *, void *))(void *)cType._vTbl[__ecereVMethodID_class_OnFree])(cType, object);
-                        }
+                        value.p = object;
+                     }
+                     else
+                     {
+                        result = typeMismatch;
+                        if(cType)
+                           ((void (*)(void *, void *))(void *)cType._vTbl[__ecereVMethodID_class_OnFree])(cType, object);
                      }
                   }
-                  else if(ch != '=')
-                  {
-                     Property convProp;
-                     for(convProp = type.conversions.first; convProp && cType; convProp = convProp.next)
+               }
+               else if(ch != '=')
+               {
+                  Property convProp = null;
+                  if (cType)  // avoid being left with the first conversion property if cType is null
+                     for(convProp = type.conversions.first; convProp; convProp = convProp.next)
                      {
                         if(!strcmp(convProp.name, cType.fullName))
                            break;
                      }
-                     if(convProp && cType)
+
+                  // At this point, convProp != null guarantees cType != null
+
+                  if(convProp && cType.type == unitClass)
+                  {
+                     // TODO: Improve on this...
+                     DataValue v;
+                     SkipEmpty();
+                     if(ch == '{')
+                        ch = 0;
+                     SkipEmpty();
+                     result = GetNumber(cType, v);
+                     SkipEmpty();
+                     if(ch == '}')
+                        ch = 0;
+                     if(result)
                      {
-                        if(cType.type == unitClass)
+                        if(type && (type.type == normalClass || type.type == noHeadClass))
                         {
-                           // TODO: Improve on this...
-                           DataValue v;
-                           SkipEmpty();
-                           if(ch == '{')
-                              ch = 0;
-                           SkipEmpty();
-                           result = GetNumber(cType, v);
-                           SkipEmpty();
-                           if(ch == '}')
-                              ch = 0;
-                           if(result)
+                           if(!strcmp(cType.dataTypeString, "double"))
                            {
-                              if(type && (type.type == normalClass || type.type == noHeadClass))
-                              {
-                                 if(!strcmp(cType.dataTypeString, "double"))
-                                 {
-                                    value.p = ((void *(*)(double))(void *)convProp.Set)(v.d);
-                                 }
-                              }
-                              else
-                                 result = typeMismatch;
+                              value.p = ((void *(*)(double))(void *)convProp.Set)(v.d);
                            }
                         }
+                        else
+                           result = typeMismatch;
                      }
                      else
                         result = typeMismatch;
                   }
+                  else
+                     result = typeMismatch;
                }
+               else
+                  result = typeMismatch;
+            }
             else
                result = typeMismatch;
          }
