@@ -540,143 +540,121 @@ private:
       }
       else if(isalpha(ch) || ch == '_')
       {
-         if(eCON)
-         {
-            String string;
-            if(GetIdentifier(&string, null) && type)
-            {
+         String unqStr;
+         if (eCON)
+         {  // Get the string the right way for eCON
+            if(GetIdentifier(&unqStr, null))
                result = success;
-               if( (type.type == enumClass || type.type == unitClass || eClass_IsDerived(type, class(ColorAlpha)) || eClass_IsDerived(type, class(Color))))
-               {
-                  bool isColorAlpha = type.type != enumClass && type.type != unitClass &&
-                     eClass_IsDerived(type, class(ColorAlpha)); // how to handle classes that derive from a special one in general?
-                  if(isColorAlpha)
-                     type = class(Color);
-                  // should this be set by calling __ecereVMethodID_class_OnGetDataFromString ?
-                  if(((bool (*)(void *, void *, const char *))(void *)type._vTbl[__ecereVMethodID_class_OnGetDataFromString])(type, &value.i, string))
-                  {
-                     if(isColorAlpha)
-                        value.ui |= 0xFF000000;
-                     result = success;
-                  }
-                  else
-                     result = typeMismatch;
-               }
-               else if(!strcmp(type.name, "bool"))
-               {
-                  if(!strcmpi(string, "false")) value.i = 0;
-                  else if(!strcmpi(string, "true")) value.i = 1;
-                  else
-                     result = typeMismatch;
-               }
-               else if(!strcmp(type.name, "SetBool"))
-               {
-                  if(!strcmpi(string, "false")) value.i = SetBool::false;
-                  else if(!strcmpi(string, "true")) value.i = SetBool::true;
-                  else
-                     result = typeMismatch;
-               }
-               else if(!strcmpi(string, "null"))
-               {
-                  if(type.type != structClass)
-                     value.p = 0;
-               }
-               else if(isSubclass(type, string))
-               {
-                  void * object = value.p;
-                  Class subtype = superFindClass(string, type.module);
-                  SkipEmpty();
-                  result = _GetObject(subtype, &object, null);  // TO REVIEW: Is this a problem with bitClass here, in 32 bit?
-                  if(result)
-                  {
-                     if(subtype && subtype.type == structClass);
-                     else if(subtype && (subtype.type == normalClass || subtype.type == noHeadClass || subtype.type == bitClass))
-                     {
-                        value.p = object;
-                     }
-                     else
-                     {
-                        result = typeMismatch;
-                        if(subtype)
-                           ((void (*)(void *, void *))(void *)subtype._vTbl[__ecereVMethodID_class_OnFree])(subtype, object);
-                     }
-                  }
-               }
-               else if(ch != '=')
-               {
-                  Property convProp;
-                  Class cType = superFindClass(string, type.module);
-                  for(convProp = type.conversions.first; convProp && cType; convProp = convProp.next)
-                  {
-                     if(!strcmp(convProp.name, cType.fullName))
-                        break;
-                  }
-                  if(convProp && cType)
-                  {
-                     if(cType.type == unitClass)
-                     {
-                        // TODO: Improve on this...
-                        DataValue v;
-                        SkipEmpty();
-                        if(ch == '{')
-                           ch = 0;
-                        SkipEmpty();
-                        result = GetNumber(cType, v);
-                        SkipEmpty();
-                        if(ch == '}')
-                           ch = 0;
-                        if(result)
-                        {
-                           if(type && (type.type == normalClass || type.type == noHeadClass))
-                           {
-                              if(!strcmp(cType.dataTypeString, "double"))
-                              {
-                                 value.p = ((void *(*)(double))(void *)convProp.Set)(v.d);
-                              }
-                           }
-                           else
-                              result = typeMismatch;
-                        }
-                     }
-                  }
-                  else
-                     result = typeMismatch;
-               }
-            }
-            delete string;
          }
          else
-         {
-            char buffer[256];
+         {  // Get the string the right way for JSON
             int c = 0;
-            while(c < sizeof(buffer)-1 && (isalpha(ch) || isdigit(ch) || ch == '_'))
+            unqStr = new char[256];
+            while(c < sizeof(unqStr)-1 && (isalpha(ch) || isdigit(ch) || ch == '_'))
             {
-               buffer[c++] = ch;
+               unqStr[c++] = ch;
                if(!ReadChar(&ch)) break;
             }
-            buffer[c] = 0;
+            unqStr[c] = 0;
             result = success;
+         }
 
-            if(type)
+         if (result && type)
+         {
+            if( eCON & (type.type == enumClass || type.type == unitClass || eClass_IsDerived(type, class(ColorAlpha)) || eClass_IsDerived(type, class(Color))))
             {
-               if(!strcmp(type.name, "bool"))
+               bool isColorAlpha = type.type != enumClass && type.type != unitClass &&
+                  eClass_IsDerived(type, class(ColorAlpha)); // how to handle classes that derive from a special one in general?
+               if(isColorAlpha)
+                  type = class(Color);
+               // should this be set by calling __ecereVMethodID_class_OnGetDataFromString ?
+               if(((bool (*)(void *, void *, const char *))(void *)type._vTbl[__ecereVMethodID_class_OnGetDataFromString])(type, &value.i, unqStr))
                {
-                  if(!strcmpi(buffer, "false")) value.i = 0;
-                  else if(!strcmpi(buffer, "true")) value.i = 1;
-                  else
-                     result = typeMismatch;
+                  if(isColorAlpha)
+                     value.ui |= 0xFF000000;
+                  result = success;
                }
-               else if(!strcmp(type.name, "SetBool"))
+               else
+                  result = typeMismatch;
+            }
+            // Start of normal JSON cases
+            else if(!strcmp(type.name, "bool"))
+            {
+               if(!strcmpi(unqStr, "false")) value.i = 0;
+               else if(!strcmpi(unqStr, "true")) value.i = 1;
+               else
+                  result = typeMismatch;
+            }
+            else if(!strcmp(type.name, "SetBool"))
+            {
+               if(!strcmpi(unqStr, "false")) value.i = SetBool::false;
+               else if(!strcmpi(unqStr, "true")) value.i = SetBool::true;
+               else
+                  result = typeMismatch;
+            }
+            else if(!strcmpi(unqStr, "null"))
+            {
+               if(type.type != structClass)
+                  value.p = 0;
+            }
+            // End of normal JSON cases
+            else if(eCON && isSubclass(type, unqStr))
+            {
+               void * object = value.p;
+               Class subtype = superFindClass(unqStr, type.module);
+               SkipEmpty();
+               result = _GetObject(subtype, &object, null);  // TO REVIEW: Is this a problem with bitClass here, in 32 bit?
+               if(result)
                {
-                  if(!strcmpi(buffer, "false")) value.i = SetBool::false;
-                  else if(!strcmpi(buffer, "true")) value.i = SetBool::true;
+                  if(subtype && subtype.type == structClass);
+                  else if(subtype && (subtype.type == normalClass || subtype.type == noHeadClass || subtype.type == bitClass))
+                  {
+                     value.p = object;
+                  }
                   else
+                  {
                      result = typeMismatch;
+                     if(subtype)
+                        ((void (*)(void *, void *))(void *)subtype._vTbl[__ecereVMethodID_class_OnFree])(subtype, object);
+                  }
                }
-               else if(!strcmpi(buffer, "null"))
+            }
+            else if(eCON && ch != '=')
+            {
+               Property convProp;
+               Class cType = superFindClass(unqStr, type.module);
+               for(convProp = type.conversions.first; convProp && cType; convProp = convProp.next)
                {
-                  if(type.type != structClass)
-                     value.p = 0;
+                  if(!strcmp(convProp.name, cType.fullName))
+                     break;
+               }
+               if(convProp && cType)
+               {
+                  if(cType.type == unitClass)
+                  {
+                     // TODO: Improve on this...
+                     DataValue v;
+                     SkipEmpty();
+                     if(ch == '{')
+                        ch = 0;
+                     SkipEmpty();
+                     result = GetNumber(cType, v);
+                     SkipEmpty();
+                     if(ch == '}')
+                        ch = 0;
+                     if(result)
+                     {
+                        if(type && (type.type == normalClass || type.type == noHeadClass))
+                        {
+                           if(!strcmp(cType.dataTypeString, "double"))
+                           {
+                              value.p = ((void *(*)(double))(void *)convProp.Set)(v.d);
+                           }
+                        }
+                        else
+                           result = typeMismatch;
+                     }
+                  }
                }
                else
                   result = typeMismatch;
@@ -684,6 +662,7 @@ private:
             else
                result = typeMismatch;
          }
+         delete unqStr;
       }
       else if(ch == '}' || ch == ']')
          result = noItem;
