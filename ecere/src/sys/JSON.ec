@@ -2835,14 +2835,6 @@ static Class superFindClass(const String name, Module alternativeModule)
    return _class;
 }
 
-static bool isSubclass(Class type, const String name)
-{
-   Class _class = superFindClass(name, type.module);
-   if(eClass_IsDerived(_class, type))
-      return true;
-   return false;
-}
-
 static void removeDashes(String string)
 {
    char ch;
