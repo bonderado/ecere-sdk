@@ -1094,6 +1094,29 @@ private:
       return result;
    }
 
+   static inline JSONResult useOGDFS(Class type,  DataValue value, JSONTypeOptions typeOptions, bool discard)
+   {
+      String special = null;
+      JSONResult result = GetSpecialValueString(&special);
+      if(result)
+      {
+         if (discard)
+            result = typeMismatch;
+         else
+         {
+            if (special[0] == '\"' && typeOptions.stripQuotesForOGDFS)
+            {
+               int len = strlen(special) -2;
+               memmove(special, special+1, len);
+               special[len] = '\0';
+            }
+            result = ConvertStringToValue(type, special, value);
+         }
+      }
+      delete special;
+      return result;
+   }
+
    JSONResult GetSpecialValueString(String * string)
    {
       // Get verbatim all text enclosed in double quotes ("text") square
