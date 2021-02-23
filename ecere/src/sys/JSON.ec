@@ -599,31 +599,30 @@ private:
             // End of normal JSON cases
                else if(eCON)
                {
-                  if(isSubclass(type, unqStr))
+                  Class cType = superFindClass(unqStr, type.module);
+                  if(cType && eClass_IsDerived(cType, type))
                   {
                      void * object = value.p;
-                     Class subtype = superFindClass(unqStr, type.module);
                      SkipEmpty();
-                     result = _GetObject(subtype, &object, null);  // TO REVIEW: Is this a problem with bitClass here, in 32 bit?
+                     result = _GetObject(cType, &object, null);  // TO REVIEW: Is this a problem with bitClass here, in 32 bit?
                      if(result)
                      {
-                        if(subtype && subtype.type == structClass);
-                        else if(subtype && (subtype.type == normalClass || subtype.type == noHeadClass || subtype.type == bitClass))
+                        if(cType && cType.type == structClass);
+                        else if(cType && (cType.type == normalClass || cType.type == noHeadClass || cType.type == bitClass))
                         {
                            value.p = object;
                         }
                         else
                         {
                            result = typeMismatch;
-                           if(subtype)
-                              ((void (*)(void *, void *))(void *)subtype._vTbl[__ecereVMethodID_class_OnFree])(subtype, object);
+                           if(cType)
+                              ((void (*)(void *, void *))(void *)cType._vTbl[__ecereVMethodID_class_OnFree])(cType, object);
                         }
                      }
                   }
                   else if(ch != '=')
                   {
                      Property convProp;
-                     Class cType = superFindClass(unqStr, type.module);
                      for(convProp = type.conversions.first; convProp && cType; convProp = convProp.next)
                      {
                         if(!strcmp(convProp.name, cType.fullName))
