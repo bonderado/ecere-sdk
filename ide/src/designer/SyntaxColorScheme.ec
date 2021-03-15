@@ -41,4 +41,11 @@ public:
       }
       get { return keywordColors; }
    }
+
+   ~SyntaxColorScheme()
+   {
+     if(keywordColors)
+        keywordColors.Free();
+     delete keywordColors;
+   }
 };

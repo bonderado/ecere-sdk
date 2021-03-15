@@ -89,6 +89,11 @@ public class SyntaxHighlighting : EditSyntaxHL
    bool allowHashInKeyword;
    bool allowDashInKeyword;
 
+   ~SyntaxHighlighting()
+   {
+      delete colorScheme;
+   }
+
    void InitDraw()
    {
       currentState = viewLineState;
